@@ -1,0 +1,28 @@
+{
+  "name": "ble-mqtt-scale",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node index.js",
+    "dev": "nodemon index.js"
+  },
+  "keywords": [
+    "mqtt",
+    "scale",
+    "ble"
+  ],
+  "author": "Michael Salaverry",
+  "license": "MIT",
+  "dependencies": {
+    "@opentelemetry/api": "^1.4.1",
+    "@opentelemetry/auto-instrumentations-node": "^0.39.2",
+    "@opentelemetry/sdk-metrics": "^1.17.0",
+    "@opentelemetry/sdk-node": "^0.43.0",
+    "dotenv": "^16.3.1",
+    "mqtt": "^5.0.5",
+    "nodemon": "^3.0.1"
+  }
+}
