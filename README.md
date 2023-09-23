@@ -10,6 +10,7 @@ This repo parses BLE readings for the
 | Wireless Mode               | Bluetooth 4.0                          |
 | Units Switch                | g / ml / fl.oz. / lb:oz               |
 | Power                       | 2 x 1.5V AAA Batteries                 |
+| source: | https://www.yolanda.hk/en/kitchenScale.html |
 
 sent via https://docs.openmqttgateway.com/ to an mqtt broker.
 
