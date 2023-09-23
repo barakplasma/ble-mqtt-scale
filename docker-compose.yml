@@ -1,0 +1,10 @@
+version: '3'
+services:
+  ble-mqtt-scale:
+    image: node:20-alpine
+    env_file: ./.env
+    volumes:
+      - ./:/app
+    working_dir: /app
+    command: sh -c "npm ci && npm start"
+    restart: unless-stopped
