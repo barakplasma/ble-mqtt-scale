@@ -27,6 +27,8 @@ client.on('message', function (topic, message) {
 
             sendParsedData(parsed);
 
+            updateBabyBuddy(parsed);
+
             span.end();
         });
     }
@@ -46,6 +48,46 @@ function sendParsedData(parsed) {
             JSON.stringify(parsed), {
             retain: true
         });
+        span.end();
+    });
+}
+
+let lastWeight = 0;
+const { BABY_BUDDY_API_URL, BABY_BUDDY_API_TOKEN } = process.env;
+const Authorization = `Token ${BABY_BUDDY_API_TOKEN}`;
+if (BABY_BUDDY_API_URL === undefined || BABY_BUDDY_API_TOKEN === undefined) {
+    console.error("BABY_BUDDY_API_URL or BABY_BUDDY_API_TOKEN not set");
+    process.exit(1);
+}
+const weightMeter = myMeter.createHistogram('weight', {
+    description: 'Weight of the baby',
+    unit: 'g',
+});
+
+const updateBabyBuddy = (parsed) => {
+    tracer.startActiveSpan('update-baby-buddy', async (span) => {
+        if (lastWeight === parsed.weight) {
+            span.addEvent("skipped-update-same-weight", { lastWeight, parsedWeight: parsed.weight })
+            span.end();
+            return;
+        }
+
+        let options = {
+            method: 'PATCH',
+            headers: {
+                'content-type': 'application/json',
+                Authorization
+            },
+            body: JSON.stringify({ note: JSON.stringify({ date: new Date().toISOString(), ...parsed }, null, 2) })
+        };
+
+        await fetch(BABY_BUDDY_API_URL, options)
+            .then(res => res.json())
+            .then(json => span.addEvent("updated-baby-buddy", json))
+            .catch(err => span.recordException(err));
+
+        lastWeight = parsed.weight;
+        weightMeter.record(parsed.weight);
         span.end();
     });
 }
