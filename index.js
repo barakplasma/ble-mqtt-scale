@@ -28,7 +28,9 @@ client.on('message', function (topic, message) {
 
             sendParsedData(parsed);
 
-            await throttledUpdateBabyBuddy(parsed);
+            if (process.env.BABY_BUDDY_API_URL !== undefined && process.env.BABY_BUDDY_API_TOKEN !== undefined) {
+                await throttledUpdateBabyBuddy(parsed);
+            }
 
             span.end();
         });
