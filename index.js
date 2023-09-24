@@ -75,7 +75,11 @@ const weightMeter = myMeter.createHistogram('weight', {
 });
 
 import TTLCache from "@isaacs/ttlcache";
-const cache = new TTLCache({ max: 1000, ttl: 60 * 60 * 24 * 1 });
+const oneDay = String(1000 * 60 * 60 * 24);
+const cache = new TTLCache({
+    max: parseInt(process.env.MAX_CACHE ?? '1000'),
+    ttl: parseInt(process.env.TTL ?? oneDay)
+});
 
 /**
  *
