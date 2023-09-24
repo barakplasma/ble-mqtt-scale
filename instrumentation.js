@@ -1,18 +1,31 @@
-import { NodeSDK } from '@opentelemetry/sdk-node';
-import { ConsoleSpanExporter } from '@opentelemetry/sdk-trace-node';
+import opentelemetry from '@opentelemetry/sdk-node';
 import {
   getNodeAutoInstrumentations,
 } from '@opentelemetry/auto-instrumentations-node';
 import {
-  PeriodicExportingMetricReader,
-  ConsoleMetricExporter,
-} from '@opentelemetry/sdk-metrics';
+  OTLPTraceExporter,
+} from '@opentelemetry/exporter-trace-otlp-proto';
+import {
+  OTLPMetricExporter,
+} from '@opentelemetry/exporter-metrics-otlp-proto';
+import { PeriodicExportingMetricReader } from '@opentelemetry/sdk-metrics';
+import { Resource } from '@opentelemetry/resources';
+import {
+  SemanticResourceAttributes,
+} from '@opentelemetry/semantic-conventions';
 
-const sdk = new NodeSDK({
-  traceExporter: new ConsoleSpanExporter(),
-  // @ts-ignore
+const sdk = new opentelemetry.NodeSDK({
+  resource: new Resource({
+    [SemanticResourceAttributes.SERVICE_NAME]: 'ble-mqtt-scale',
+    [SemanticResourceAttributes.SERVICE_VERSION]: '0.1.0',
+  }),
+  traceExporter: new OTLPTraceExporter({
+    url: process.env.OTEL_EXPORTER_OTLP_ENDPOINT+'/v1/traces',
+  }),
   metricReader: new PeriodicExportingMetricReader({
-    exporter: new ConsoleMetricExporter(),
+    exporter: new OTLPMetricExporter({
+      url: process.env.OTEL_EXPORTER_OTLP_ENDPOINT+'/v1/metrics',
+    }),
   }),
   instrumentations: [getNodeAutoInstrumentations()],
 });

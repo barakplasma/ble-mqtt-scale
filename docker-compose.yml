@@ -8,3 +8,20 @@ services:
     working_dir: /app
     command: sh -c "npm ci && npm start"
     restart: unless-stopped
+    environment:
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
+    networks:
+      - jaeger-net
+    depends_on:
+      - jaeger
+
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    ports:
+      - "4318:4318"
+      - "16686:16686"
+    networks:
+      - jaeger-net
+
+networks:
+  jaeger-net:
