@@ -13,13 +13,6 @@ const throttle = pThrottle({
     interval: 5e3,
 });
 
-const { BABY_BUDDY_API_URL, BABY_BUDDY_API_TOKEN } = process.env;
-const Authorization = `Token ${BABY_BUDDY_API_TOKEN}`;
-
-if (BABY_BUDDY_API_URL === undefined || BABY_BUDDY_API_TOKEN === undefined) {
-    console.error("BABY_BUDDY_API_URL or BABY_BUDDY_API_TOKEN not set");
-    process.exit(1);
-}
 const weightMeter = myMeter.createHistogram('weight', {
     description: 'Weights measured',
     unit: 'g',
@@ -56,11 +49,20 @@ const sendRequest = async (
     /** @type {import("./parsePayload.js").ScaleData} */ parsed,
     /** @type {import("@opentelemetry/api").Span} */ span
 ) => {
+    const { BABY_BUDDY_API_URL, BABY_BUDDY_API_TOKEN } = process.env;
+
+    const shouldUpdateBabyBuddy = typeof BABY_BUDDY_API_URL === 'string' && typeof BABY_BUDDY_API_TOKEN === 'string';
+
+    if (!shouldUpdateBabyBuddy) {
+        console.warn("BABY_BUDDY_API_URL or BABY_BUDDY_API_TOKEN not set");
+        return;
+    }
+
     let options = {
         method: 'PATCH',
         headers: {
             'content-type': 'application/json',
-            Authorization
+            Authorization: `Token ${BABY_BUDDY_API_TOKEN}`
         },
         body: JSON.stringify({
             note: JSON.stringify({

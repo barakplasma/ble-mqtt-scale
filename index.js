@@ -11,6 +11,8 @@ const myMeter = opentelemetry.metrics.getMeter('ble-mqtt-scale-parser-meter', '1
 
 import client from './client.js';
 import { parseManufacturerData } from "./parsePayload.js";
+
+export const shouldUpdateBabyBuddy = typeof process.env.BABY_BUDDY_API_URL === 'string' && typeof process.env.BABY_BUDDY_API_TOKEN === 'string';
 import { throttledUpdateBabyBuddy } from "./baby-buddy-update.js";
 
 const messages_counter = myMeter.createCounter('messages_received');
@@ -28,7 +30,9 @@ client.on('message', function (topic, message) {
 
             sendParsedData(parsed);
 
-            await throttledUpdateBabyBuddy(parsed);
+            if (shouldUpdateBabyBuddy) {
+                await throttledUpdateBabyBuddy(parsed);
+            }
 
             span.end();
         });
