@@ -39,7 +39,8 @@ export function parseManufacturerData(payload) {
             const negative = "b" === manufacturerData.substring(16, 17);
             const weight = parseInt(manufacturerData.substring(7, 10), 16) * (negative ? -1 : 1);
             const unit = { "2": "grams", "4": "mL", "6": "floz", "8": "lb-oz" }[manufacturerData.substring(17, 18)];
-            const parsed = { unit, weight, tared, weightIsStable };
+            const date = new Date().toISOString();
+            const parsed = { unit, weight, tared, weightIsStable, date };
             span.addEvent("Parsed payload", parsed);
             span.end();
             return parsed;
