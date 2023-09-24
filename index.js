@@ -70,7 +70,7 @@ if (BABY_BUDDY_API_URL === undefined || BABY_BUDDY_API_TOKEN === undefined) {
     process.exit(1);
 }
 const weightMeter = myMeter.createHistogram('weight', {
-    description: 'Weight of the baby',
+    description: 'Weights measured',
     unit: 'g',
 });
 
