@@ -14,6 +14,13 @@ import { parseManufacturerData } from "./parsePayload.js";
 
 const messages_counter = myMeter.createCounter('messages_received');
 
+import pThrottle from 'p-throttle';
+
+const throttle = pThrottle({
+    limit: 5,
+    interval: 5e3,
+});
+
 client.on('message', function (topic, message) {
     messages_counter.add(1);
     if (topic === process.env.MQTT_TOPIC) {
@@ -27,7 +34,7 @@ client.on('message', function (topic, message) {
 
             sendParsedData(parsed);
 
-            updateBabyBuddy(parsed);
+            throttledUpdateBabyBuddy(parsed);
 
             span.end();
         });
@@ -36,6 +43,10 @@ client.on('message', function (topic, message) {
 
 const { MQTT_TOPIC_FOR_PARSED_DATA } = process.env;
 
+/**
+ *
+ * @param {import("./parsePayload.js").ScaleData} parsed
+ */
 function sendParsedData(parsed) {
     tracer.startActiveSpan('send-parsed-data', (span) => {
         if (typeof MQTT_TOPIC_FOR_PARSED_DATA !== 'string') {
@@ -52,7 +63,6 @@ function sendParsedData(parsed) {
     });
 }
 
-let lastWeight = 0;
 const { BABY_BUDDY_API_URL, BABY_BUDDY_API_TOKEN } = process.env;
 const Authorization = `Token ${BABY_BUDDY_API_TOKEN}`;
 if (BABY_BUDDY_API_URL === undefined || BABY_BUDDY_API_TOKEN === undefined) {
@@ -64,12 +74,23 @@ const weightMeter = myMeter.createHistogram('weight', {
     unit: 'g',
 });
 
+import TTLCache from "@isaacs/ttlcache";
+const cache = new TTLCache({ max: 1000, ttl: 60 * 60 * 24 * 1 });
+
+/**
+ *
+ * @param {import("./parsePayload.js").ScaleData} parsed
+ */
 const updateBabyBuddy = (parsed) => {
     tracer.startActiveSpan('update-baby-buddy', async (span) => {
-        if (lastWeight === parsed.weight) {
-            span.addEvent("skipped-update-same-weight", { lastWeight, parsedWeight: parsed.weight })
-            span.end();
-            return;
+        const date = new Date().toISOString().slice(0, 16);
+
+        if (cache.has(date)) {
+            let cachedSet = cache.get(date);
+            cachedSet.add(parsed.weight);
+            cache.set(date, cachedSet);
+        } else {
+            cache.set(date, new Set([parsed.weight]));
         }
 
         let options = {
@@ -78,7 +99,18 @@ const updateBabyBuddy = (parsed) => {
                 'content-type': 'application/json',
                 Authorization
             },
-            body: JSON.stringify({ note: JSON.stringify({ date: new Date().toISOString(), ...parsed }, null, 2) })
+            body: JSON.stringify({
+                note: JSON.stringify({
+                    date,
+                    cache: [...cache.entries()].map(x => (
+                        {
+                            date: x[0],
+                            weights: [...x[1]]
+                        }
+                    )).reverse(),
+                    ...parsed,
+                }, null, 2)
+            })
         };
 
         await fetch(BABY_BUDDY_API_URL, options)
@@ -86,8 +118,9 @@ const updateBabyBuddy = (parsed) => {
             .then(json => span.addEvent("updated-baby-buddy", json))
             .catch(err => span.recordException(err));
 
-        lastWeight = parsed.weight;
         weightMeter.record(parsed.weight);
         span.end();
     });
 }
+
+const throttledUpdateBabyBuddy = throttle(updateBabyBuddy);
