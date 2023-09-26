@@ -1,10 +1,10 @@
-import opentelemetry from '@opentelemetry/api';
+import { SpanStatusCode, trace, metrics } from '@opentelemetry/api';
 
-const tracer = opentelemetry.trace.getTracer(
+const tracer = trace.getTracer(
     'ble-mqtt-scale-baby-buddy-updater',
     '1',
 );
-const myMeter = opentelemetry.metrics.getMeter('ble-mqtt-scale-baby-buddy-meter', '1');
+const myMeter = metrics.getMeter('ble-mqtt-scale-baby-buddy-meter', '1');
 
 import pThrottle from 'p-throttle';
 
@@ -35,11 +35,12 @@ const updateBabyBuddy = (parsed) => {
     tracer.startActiveSpan('update-baby-buddy', async (span) => {
         const date = new Date().toISOString().slice(0, 16);
 
+        weightMeter.record(parsed.weight);
+
         updateCache(date, parsed);
 
         await sendRequest(date, parsed, span);
 
-        weightMeter.record(parsed.weight);
         span.end();
     });
 }
@@ -53,6 +54,7 @@ const sendRequest = async (
 ) => {
     if (BABY_BUDDY_API_URL === undefined || BABY_BUDDY_API_TOKEN === undefined) {
         span.recordException(new Error("BABY_BUDDY_API_URL or BABY_BUDDY_API_TOKEN not set"));
+        span.setStatus({ code: SpanStatusCode.ERROR });
         return;
     }
 
@@ -79,7 +81,10 @@ const sendRequest = async (
     await fetch(BABY_BUDDY_API_URL, options)
         .then(res => res.json())
         .then(json => span.addEvent("updated-baby-buddy", json))
-        .catch(err => span.recordException(err));
+        .catch(err => {
+            span.recordException(err);
+            span.setStatus({ code: SpanStatusCode.ERROR });
+        });
 }
 
 function updateCache(
